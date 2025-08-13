@@ -1,5 +1,6 @@
-# Ticket-Pro - Gerenciador de Tarefas – Matriz de Eisenhower + Método Ivy Lee
-Aplicação web em HTML, CSS e JavaScript para organizar tarefas com a Matriz de Eisenhower e o Método Ivy Lee. Importa e exporta arquivos Excel, classifica tarefas por prioridade e permite escolher até 6 tarefas diárias, tudo direto no navegador, sem necessidade de backend.
+# Gerenciador de Tarefas – Matriz de Eisenhower + Método Ivy Lee
+
+Aplicação web simples em **HTML**, **CSS** e **JavaScript** para organizar tarefas combinando a **Matriz de Eisenhower** (priorização) e o **Método Ivy Lee** (seleção das 6 tarefas diárias mais importantes).
 
 O sistema funciona 100% no navegador, sem necessidade de backend. É possível **importar** um arquivo Excel com tarefas, classificá-las automaticamente nos quadrantes da matriz e **exportar** o resultado atualizado para Excel.
 
