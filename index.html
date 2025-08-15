@@ -1,0 +1,1035 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ticket Pro - Gerenciador de Atividades</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+        
+        * {
+            font-family: 'Inter', sans-serif;
+        }
+        
+        .gradient-bg {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        }
+        
+        .glass-effect {
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+        
+        .card-hover {
+            transition: all 0.3s ease;
+        }
+        
+        .card-hover:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+        }
+        
+        .task-item {
+            transition: all 0.3s ease;
+            cursor: grab;
+        }
+        
+        .task-item:hover {
+            transform: scale(1.02);
+        }
+        
+        .task-item.dragging {
+            opacity: 0.5;
+            transform: rotate(5deg);
+        }
+        
+        .drop-zone {
+            transition: all 0.3s ease;
+        }
+        
+        .drop-zone.drag-over {
+            background: rgba(59, 130, 246, 0.1);
+            border: 2px dashed #3b82f6;
+        }
+        
+        .priority-urgent-important {
+            background: linear-gradient(135deg, #ef4444, #dc2626);
+        }
+        
+        .priority-urgent-not-important {
+            background: linear-gradient(135deg, #f59e0b, #d97706);
+        }
+        
+        .priority-not-urgent-important {
+            background: linear-gradient(135deg, #10b981, #059669);
+        }
+        
+        .priority-not-urgent-not-important {
+            background: linear-gradient(135deg, #6b7280, #4b5563);
+        }
+        
+        .nav-item {
+            transition: all 0.3s ease;
+        }
+        
+        .nav-item:hover {
+            background: rgba(255, 255, 255, 0.1);
+        }
+        
+        .nav-item.active {
+            background: rgba(255, 255, 255, 0.2);
+            border-left: 4px solid #ffffff;
+        }
+        
+        .animate-pulse-slow {
+            animation: pulse 3s infinite;
+        }
+        
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        
+        .fade-in {
+            animation: fadeIn 0.5s ease-out;
+        }
+        
+        .weekly-day {
+            min-height: 200px;
+            transition: all 0.3s ease;
+        }
+        
+        .weekly-day:hover {
+            background: rgba(59, 130, 246, 0.05);
+        }
+        
+        .floating-add-btn {
+            position: fixed;
+            bottom: 30px;
+            right: 30px;
+            z-index: 1000;
+            transition: all 0.3s ease;
+        }
+        
+        .floating-add-btn:hover {
+            transform: scale(1.1);
+        }
+        
+        .modal-overlay {
+            backdrop-filter: blur(5px);
+        }
+        
+        .progress-ring {
+            transition: stroke-dasharray 0.3s ease;
+        }
+    </style>
+</head>
+<body class="bg-gray-50 min-h-screen">
+    <!-- Header -->
+    <header class="gradient-bg text-white shadow-lg">
+        <div class="container mx-auto px-6 py-4">
+            <div class="flex items-center justify-between">
+                <div class="flex items-center space-x-3">
+                    <div class="w-10 h-10 bg-white bg-opacity-20 rounded-lg flex items-center justify-center">
+                        <i class="fas fa-tasks text-xl"></i>
+                    </div>
+                    <div>
+                        <h1 class="text-2xl font-bold">Tickets Pro</h1>
+                        <p class="text-sm opacity-90">Gerenciador de Atividades Inteligente</p>
+                    </div>
+                </div>
+                
+                <div class="flex items-center space-x-4">
+                    <div class="hidden md:flex items-center space-x-4 text-sm">
+                        <div class="flex items-center space-x-2">
+                            <div class="w-3 h-3 bg-green-400 rounded-full animate-pulse"></div>
+                            <span id="taskCount">0 tarefas</span>
+                        </div>
+                        <div class="flex items-center space-x-2">
+                            <div class="w-3 h-3 bg-blue-400 rounded-full"></div>
+                            <span id="completedCount">0 concluídas</span>
+                        </div>
+                    </div>
+                    
+                    <div class="flex space-x-2">
+                        <button onclick="uploadExcel()" class="bg-white bg-opacity-20 hover:bg-opacity-30 px-4 py-2 rounded-lg transition-all flex items-center space-x-2">
+                            <i class="fas fa-upload"></i>
+                            <span class="hidden md:inline">Upload</span>
+                        </button>
+                        <button onclick="downloadExcel()" class="bg-white bg-opacity-20 hover:bg-opacity-30 px-4 py-2 rounded-lg transition-all flex items-center space-x-2">
+                            <i class="fas fa-download"></i>
+                            <span class="hidden md:inline">Download</span>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <!-- Navigation -->
+    <nav class="bg-white shadow-sm border-b">
+        <div class="container mx-auto px-6">
+            <div class="flex space-x-8">
+                <button onclick="showSection('eisenhower')" class="nav-item px-4 py-4 text-gray-600 hover:text-blue-600 border-b-2 border-transparent hover:border-blue-600 active" id="nav-eisenhower">
+                    <i class="fas fa-th-large mr-2"></i>
+                    Matriz de Eisenhower
+                </button>
+                <button onclick="showSection('weekly')" class="nav-item px-4 py-4 text-gray-600 hover:text-blue-600 border-b-2 border-transparent hover:border-blue-600" id="nav-weekly">
+                    <i class="fas fa-calendar-week mr-2"></i>
+                    Planejamento Semanal
+                </button>
+                <button onclick="showSection('analytics')" class="nav-item px-4 py-4 text-gray-600 hover:text-blue-600 border-b-2 border-transparent hover:border-blue-600" id="nav-analytics">
+                    <i class="fas fa-chart-bar mr-2"></i>
+                    Analytics
+                </button>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Main Content -->
+    <main class="container mx-auto px-6 py-8">
+        <!-- Eisenhower Matrix Section -->
+        <section id="eisenhower-section" class="fade-in">
+            <div class="mb-8">
+                <h2 class="text-3xl font-bold text-gray-800 mb-2">Matriz de Eisenhower</h2>
+                <p class="text-gray-600">Organize suas tarefas por urgência e importância</p>
+            </div>
+            
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <!-- Urgente e Importante -->
+                <div class="bg-white rounded-xl shadow-lg card-hover">
+                    <div class="priority-urgent-important text-white p-4 rounded-t-xl">
+                        <div class="flex items-center justify-between">
+                            <div>
+                                <h3 class="font-bold text-lg">Urgente & Importante</h3>
+                                <p class="text-sm opacity-90">Faça primeiro (Crises)</p>
+                            </div>
+                            <i class="fas fa-exclamation-triangle text-2xl"></i>
+                        </div>
+                    </div>
+                    <div class="p-4 drop-zone min-h-64" data-priority="urgent-important">
+                        <div id="urgent-important-tasks" class="space-y-3">
+                            <!-- Tasks will be dynamically added here -->
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Urgente e Não Importante -->
+                <div class="bg-white rounded-xl shadow-lg card-hover">
+                    <div class="priority-urgent-not-important text-white p-4 rounded-t-xl">
+                        <div class="flex items-center justify-between">
+                            <div>
+                                <h3 class="font-bold text-lg">Urgente & Não Importante</h3>
+                                <p class="text-sm opacity-90">Delegue (Interrupções)</p>
+                            </div>
+                            <i class="fas fa-clock text-2xl"></i>
+                        </div>
+                    </div>
+                    <div class="p-4 drop-zone min-h-64" data-priority="urgent-not-important">
+                        <div id="urgent-not-important-tasks" class="space-y-3">
+                            <!-- Tasks will be dynamically added here -->
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Não Urgente e Importante -->
+                <div class="bg-white rounded-xl shadow-lg card-hover">
+                    <div class="priority-not-urgent-important text-white p-4 rounded-t-xl">
+                        <div class="flex items-center justify-between">
+                            <div>
+                                <h3 class="font-bold text-lg">Não Urgente & Importante</h3>
+                                <p class="text-sm opacity-90">Agende (Metas)</p>
+                            </div>
+                            <i class="fas fa-target text-2xl"></i>
+                        </div>
+                    </div>
+                    <div class="p-4 drop-zone min-h-64" data-priority="not-urgent-important">
+                        <div id="not-urgent-important-tasks" class="space-y-3">
+                            <!-- Tasks will be dynamically added here -->
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Não Urgente e Não Importante -->
+                <div class="bg-white rounded-xl shadow-lg card-hover">
+                    <div class="priority-not-urgent-not-important text-white p-4 rounded-t-xl">
+                        <div class="flex items-center justify-between">
+                            <div>
+                                <h3 class="font-bold text-lg">Não Urgente & Não Importante</h3>
+                                <p class="text-sm opacity-90">Elimine (Distrações)</p>
+                            </div>
+                            <i class="fas fa-trash text-2xl"></i>
+                        </div>
+                    </div>
+                    <div class="p-4 drop-zone min-h-64" data-priority="not-urgent-not-important">
+                        <div id="not-urgent-not-important-tasks" class="space-y-3">
+                            <!-- Tasks will be dynamically added here -->
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Weekly Planning Section -->
+        <section id="weekly-section" class="hidden fade-in">
+            <div class="mb-8">
+                <h2 class="text-3xl font-bold text-gray-800 mb-2">Planejamento Semanal</h2>
+                <p class="text-gray-600">Método Ivy Lee - Organize suas 6 tarefas prioritárias por dia</p>
+            </div>
+            
+            <div class="grid grid-cols-1 lg:grid-cols-7 gap-4">
+                <div class="weekly-day bg-white rounded-xl shadow-lg p-4" data-day="monday">
+                    <h3 class="font-bold text-lg text-gray-800 mb-3 flex items-center">
+                        <i class="fas fa-calendar-day mr-2 text-blue-500"></i>
+                        Segunda
+                    </h3>
+                    <div class="drop-zone min-h-48" data-day="monday">
+                        <div id="monday-tasks" class="space-y-2">
+                            <!-- Tasks will be dynamically added here -->
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="weekly-day bg-white rounded-xl shadow-lg p-4" data-day="tuesday">
+                    <h3 class="font-bold text-lg text-gray-800 mb-3 flex items-center">
+                        <i class="fas fa-calendar-day mr-2 text-green-500"></i>
+                        Terça
+                    </h3>
+                    <div class="drop-zone min-h-48" data-day="tuesday">
+                        <div id="tuesday-tasks" class="space-y-2">
+                            <!-- Tasks will be dynamically added here -->
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="weekly-day bg-white rounded-xl shadow-lg p-4" data-day="wednesday">
+                    <h3 class="font-bold text-lg text-gray-800 mb-3 flex items-center">
+                        <i class="fas fa-calendar-day mr-2 text-yellow-500"></i>
+                        Quarta
+                    </h3>
+                    <div class="drop-zone min-h-48" data-day="wednesday">
+                        <div id="wednesday-tasks" class="space-y-2">
+                            <!-- Tasks will be dynamically added here -->
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="weekly-day bg-white rounded-xl shadow-lg p-4" data-day="thursday">
+                    <h3 class="font-bold text-lg text-gray-800 mb-3 flex items-center">
+                        <i class="fas fa-calendar-day mr-2 text-purple-500"></i>
+                        Quinta
+                    </h3>
+                    <div class="drop-zone min-h-48" data-day="thursday">
+                        <div id="thursday-tasks" class="space-y-2">
+                            <!-- Tasks will be dynamically added here -->
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="weekly-day bg-white rounded-xl shadow-lg p-4" data-day="friday">
+                    <h3 class="font-bold text-lg text-gray-800 mb-3 flex items-center">
+                        <i class="fas fa-calendar-day mr-2 text-red-500"></i>
+                        Sexta
+                    </h3>
+                    <div class="drop-zone min-h-48" data-day="friday">
+                        <div id="friday-tasks" class="space-y-2">
+                            <!-- Tasks will be dynamically added here -->
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="weekly-day bg-white rounded-xl shadow-lg p-4" data-day="saturday">
+                    <h3 class="font-bold text-lg text-gray-800 mb-3 flex items-center">
+                        <i class="fas fa-calendar-day mr-2 text-indigo-500"></i>
+                        Sábado
+                    </h3>
+                    <div class="drop-zone min-h-48" data-day="saturday">
+                        <div id="saturday-tasks" class="space-y-2">
+                            <!-- Tasks will be dynamically added here -->
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="weekly-day bg-white rounded-xl shadow-lg p-4" data-day="sunday">
+                    <h3 class="font-bold text-lg text-gray-800 mb-3 flex items-center">
+                        <i class="fas fa-calendar-day mr-2 text-pink-500"></i>
+                        Domingo
+                    </h3>
+                    <div class="drop-zone min-h-48" data-day="sunday">
+                        <div id="sunday-tasks" class="space-y-2">
+                            <!-- Tasks will be dynamically added here -->
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Analytics Section -->
+        <section id="analytics-section" class="hidden fade-in">
+            <div class="mb-8">
+                <h2 class="text-3xl font-bold text-gray-800 mb-2">Analytics & Insights</h2>
+                <p class="text-gray-600">Acompanhe sua produtividade e padrões</p>
+            </div>
+            
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
+                <div class="bg-white rounded-xl shadow-lg p-6 card-hover">
+                    <div class="flex items-center justify-between mb-4">
+                        <h3 class="text-lg font-semibold text-gray-800">Tarefas Totais</h3>
+                        <i class="fas fa-tasks text-2xl text-blue-500"></i>
+                    </div>
+                    <div class="text-3xl font-bold text-blue-600" id="total-tasks-analytics">0</div>
+                    <div class="text-sm text-gray-500 mt-2">tarefas criadas</div>
+                </div>
+                
+                <div class="bg-white rounded-xl shadow-lg p-6 card-hover">
+                    <div class="flex items-center justify-between mb-4">
+                        <h3 class="text-lg font-semibold text-gray-800">Concluídas</h3>
+                        <i class="fas fa-check-circle text-2xl text-green-500"></i>
+                    </div>
+                    <div class="text-3xl font-bold text-green-600" id="completed-tasks-analytics">0</div>
+                    <div class="text-sm text-gray-500 mt-2">tarefas finalizadas</div>
+                </div>
+                
+                <div class="bg-white rounded-xl shadow-lg p-6 card-hover">
+                    <div class="flex items-center justify-between mb-4">
+                        <h3 class="text-lg font-semibold text-gray-800">Taxa de Conclusão</h3>
+                        <i class="fas fa-percentage text-2xl text-purple-500"></i>
+                    </div>
+                    <div class="text-3xl font-bold text-purple-600" id="completion-rate">0%</div>
+                    <div class="text-sm text-gray-500 mt-2">de produtividade</div>
+                </div>
+            </div>
+            
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <div class="bg-white rounded-xl shadow-lg p-6 card-hover">
+                    <h3 class="text-lg font-semibold text-gray-800 mb-4">Distribuição por Prioridade</h3>
+                    <div class="space-y-4">
+                        <div class="flex items-center justify-between">
+                            <div class="flex items-center space-x-3">
+                                <div class="w-4 h-4 bg-red-500 rounded"></div>
+                                <span class="text-sm">Urgente & Importante</span>
+                            </div>
+                            <span class="text-sm font-semibold" id="urgent-important-count">0</span>
+                        </div>
+                        <div class="flex items-center justify-between">
+                            <div class="flex items-center space-x-3">
+                                <div class="w-4 h-4 bg-orange-500 rounded"></div>
+                                <span class="text-sm">Urgente & Não Importante</span>
+                            </div>
+                            <span class="text-sm font-semibold" id="urgent-not-important-count">0</span>
+                        </div>
+                        <div class="flex items-center justify-between">
+                            <div class="flex items-center space-x-3">
+                                <div class="w-4 h-4 bg-green-500 rounded"></div>
+                                <span class="text-sm">Não Urgente & Importante</span>
+                            </div>
+                            <span class="text-sm font-semibold" id="not-urgent-important-count">0</span>
+                        </div>
+                        <div class="flex items-center justify-between">
+                            <div class="flex items-center space-x-3">
+                                <div class="w-4 h-4 bg-gray-500 rounded"></div>
+                                <span class="text-sm">Não Urgente & Não Importante</span>
+                            </div>
+                            <span class="text-sm font-semibold" id="not-urgent-not-important-count">0</span>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="bg-white rounded-xl shadow-lg p-6 card-hover">
+                    <h3 class="text-lg font-semibold text-gray-800 mb-4">Distribuição Semanal</h3>
+                    <div class="space-y-4">
+                        <div class="flex items-center justify-between">
+                            <span class="text-sm">Segunda-feira</span>
+                            <span class="text-sm font-semibold" id="monday-count">0</span>
+                        </div>
+                        <div class="flex items-center justify-between">
+                            <span class="text-sm">Terça-feira</span>
+                            <span class="text-sm font-semibold" id="tuesday-count">0</span>
+                        </div>
+                        <div class="flex items-center justify-between">
+                            <span class="text-sm">Quarta-feira</span>
+                            <span class="text-sm font-semibold" id="wednesday-count">0</span>
+                        </div>
+                        <div class="flex items-center justify-between">
+                            <span class="text-sm">Quinta-feira</span>
+                            <span class="text-sm font-semibold" id="thursday-count">0</span>
+                        </div>
+                        <div class="flex items-center justify-between">
+                            <span class="text-sm">Sexta-feira</span>
+                            <span class="text-sm font-semibold" id="friday-count">0</span>
+                        </div>
+                        <div class="flex items-center justify-between">
+                            <span class="text-sm">Sábado</span>
+                            <span class="text-sm font-semibold" id="saturday-count">0</span>
+                        </div>
+                        <div class="flex items-center justify-between">
+                            <span class="text-sm">Domingo</span>
+                            <span class="text-sm font-semibold" id="sunday-count">0</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <!-- Floating Action Button -->
+    <button onclick="openTaskModal()" class="floating-add-btn bg-blue-600 hover:bg-blue-700 text-white w-16 h-16 rounded-full shadow-lg flex items-center justify-center">
+        <i class="fas fa-plus text-xl"></i>
+    </button>
+
+    <!-- Task Modal -->
+    <div id="taskModal" class="fixed inset-0 bg-black bg-opacity-50 modal-overlay hidden flex items-center justify-center z-50">
+        <div class="bg-white rounded-2xl p-8 w-full max-w-md mx-4 shadow-2xl">
+            <div class="flex items-center justify-between mb-6">
+                <h3 class="text-2xl font-bold text-gray-800" id="modalTitle">Nova Tarefa</h3>
+                <button onclick="closeTaskModal()" class="text-gray-400 hover:text-gray-600 text-2xl">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            
+            <form id="taskForm" class="space-y-4">
+                <div>
+                    <label class="block text-sm font-semibold text-gray-700 mb-2">Título da Tarefa</label>
+                    <input type="text" id="taskTitle" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent" placeholder="Digite o título da tarefa" required>
+                </div>
+                
+                <div>
+                    <label class="block text-sm font-semibold text-gray-700 mb-2">Descrição</label>
+                    <textarea id="taskDescription" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent" rows="3" placeholder="Descreva os detalhes da tarefa"></textarea>
+                </div>
+                
+                <div>
+                    <label class="block text-sm font-semibold text-gray-700 mb-2">Prioridade</label>
+                    <select id="taskPriority" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+                        <option value="urgent-important">Urgente & Importante</option>
+                        <option value="urgent-not-important">Urgente & Não Importante</option>
+                        <option value="not-urgent-important">Não Urgente & Importante</option>
+                        <option value="not-urgent-not-important">Não Urgente & Não Importante</option>
+                    </select>
+                </div>
+                
+                <div>
+                    <label class="block text-sm font-semibold text-gray-700 mb-2">Data de Vencimento</label>
+                    <input type="date" id="taskDueDate" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+                </div>
+                
+                <div>
+                    <label class="block text-sm font-semibold text-gray-700 mb-2">Dia da Semana (Opcional)</label>
+                    <select id="taskWeekDay" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+                        <option value="">Não agendar para dia específico</option>
+                        <option value="monday">Segunda-feira</option>
+                        <option value="tuesday">Terça-feira</option>
+                        <option value="wednesday">Quarta-feira</option>
+                        <option value="thursday">Quinta-feira</option>
+                        <option value="friday">Sexta-feira</option>
+                        <option value="saturday">Sábado</option>
+                        <option value="sunday">Domingo</option>
+                    </select>
+                </div>
+                
+                <div class="flex space-x-4 pt-4">
+                    <button type="submit" class="flex-1 bg-blue-600 hover:bg-blue-700 text-white py-3 rounded-lg font-semibold transition-all">
+                        Salvar Tarefa
+                    </button>
+                    <button type="button" onclick="closeTaskModal()" class="flex-1 bg-gray-300 hover:bg-gray-400 text-gray-700 py-3 rounded-lg font-semibold transition-all">
+                        Cancelar
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- File input for Excel upload (hidden) -->
+    <input type="file" id="fileInput" accept=".xlsx,.xls" style="display: none;" onchange="handleFileUpload(event)">
+
+    <script>
+        // Global variables
+        let tasks = [];
+        let currentEditingTask = null;
+        let draggedTask = null;
+
+        // Initialize the application
+        document.addEventListener('DOMContentLoaded', function() {
+            loadFromLocalStorage();
+            renderTasks();
+            updateAnalytics();
+            setupDragAndDrop();
+        });
+
+        // Task management functions
+        function generateTaskId() {
+            return Date.now().toString(36) + Math.random().toString(36).substr(2);
+        }
+
+        function createTask(title, description, priority, dueDate, weekDay = null) {
+            return {
+                id: generateTaskId(),
+                title: title,
+                description: description,
+                priority: priority,
+                dueDate: dueDate,
+                weekDay: weekDay,
+                completed: false,
+                createdAt: new Date().toISOString(),
+                completedAt: null
+            };
+        }
+
+        function addTask(task) {
+            tasks.push(task);
+            saveToLocalStorage();
+            renderTasks();
+            updateAnalytics();
+        }
+
+        function updateTask(taskId, updates) {
+            const taskIndex = tasks.findIndex(task => task.id === taskId);
+            if (taskIndex !== -1) {
+                tasks[taskIndex] = { ...tasks[taskIndex], ...updates };
+                saveToLocalStorage();
+                renderTasks();
+                updateAnalytics();
+            }
+        }
+
+        function deleteTask(taskId) {
+            tasks = tasks.filter(task => task.id !== taskId);
+            saveToLocalStorage();
+            renderTasks();
+            updateAnalytics();
+        }
+
+        function toggleTaskCompletion(taskId) {
+            const task = tasks.find(task => task.id === taskId);
+            if (task) {
+                task.completed = !task.completed;
+                task.completedAt = task.completed ? new Date().toISOString() : null;
+                saveToLocalStorage();
+                renderTasks();
+                updateAnalytics();
+            }
+        }
+
+        // UI functions
+        function openTaskModal(taskId = null) {
+            const modal = document.getElementById('taskModal');
+            const modalTitle = document.getElementById('modalTitle');
+            const form = document.getElementById('taskForm');
+            
+            if (taskId) {
+                const task = tasks.find(t => t.id === taskId);
+                if (task) {
+                    currentEditingTask = taskId;
+                    modalTitle.textContent = 'Editar Tarefa';
+                    document.getElementById('taskTitle').value = task.title;
+                    document.getElementById('taskDescription').value = task.description;
+                    document.getElementById('taskPriority').value = task.priority;
+                    document.getElementById('taskDueDate').value = task.dueDate;
+                    document.getElementById('taskWeekDay').value = task.weekDay || '';
+                }
+            } else {
+                currentEditingTask = null;
+                modalTitle.textContent = 'Nova Tarefa';
+                form.reset();
+            }
+            
+            modal.classList.remove('hidden');
+        }
+
+        function closeTaskModal() {
+            const modal = document.getElementById('taskModal');
+            modal.classList.add('hidden');
+            currentEditingTask = null;
+        }
+
+        function showSection(sectionName) {
+            // Hide all sections
+            document.getElementById('eisenhower-section').classList.add('hidden');
+            document.getElementById('weekly-section').classList.add('hidden');
+            document.getElementById('analytics-section').classList.add('hidden');
+            
+            // Remove active class from all nav items
+            document.querySelectorAll('.nav-item').forEach(item => {
+                item.classList.remove('active', 'border-blue-600', 'text-blue-600');
+                item.classList.add('text-gray-600');
+            });
+            
+            // Show selected section
+            document.getElementById(sectionName + '-section').classList.remove('hidden');
+            
+            // Add active class to selected nav item
+            const activeNav = document.getElementById('nav-' + sectionName);
+            activeNav.classList.add('active', 'border-blue-600', 'text-blue-600');
+            activeNav.classList.remove('text-gray-600');
+            
+            if (sectionName === 'analytics') {
+                updateAnalytics();
+            }
+        }
+
+        function renderTasks() {
+            // Clear all containers
+            const containers = [
+                'urgent-important-tasks',
+                'urgent-not-important-tasks', 
+                'not-urgent-important-tasks',
+                'not-urgent-not-important-tasks',
+                'monday-tasks',
+                'tuesday-tasks',
+                'wednesday-tasks',
+                'thursday-tasks',
+                'friday-tasks',
+                'saturday-tasks',
+                'sunday-tasks'
+            ];
+            
+            containers.forEach(containerId => {
+                const container = document.getElementById(containerId);
+                if (container) {
+                    container.innerHTML = '';
+                }
+            });
+
+            // Render tasks in Eisenhower matrix
+            tasks.forEach(task => {
+                if (task.priority) {
+                    const container = document.getElementById(task.priority + '-tasks');
+                    if (container) {
+                        container.appendChild(createTaskElement(task, 'eisenhower'));
+                    }
+                }
+                
+                // Render tasks in weekly view
+                if (task.weekDay) {
+                    const weekContainer = document.getElementById(task.weekDay + '-tasks');
+                    if (weekContainer) {
+                        weekContainer.appendChild(createTaskElement(task, 'weekly'));
+                    }
+                }
+            });
+
+            // Update header counts
+            updateHeaderCounts();
+        }
+
+        function createTaskElement(task, view = 'eisenhower') {
+            const taskElement = document.createElement('div');
+            taskElement.className = `task-item bg-gray-50 border-l-4 ${task.completed ? 'border-green-500 bg-green-50' : 'border-blue-500'} p-4 rounded-lg shadow-sm`;
+            taskElement.draggable = true;
+            taskElement.dataset.taskId = task.id;
+            
+            const isOverdue = task.dueDate && new Date(task.dueDate) < new Date() && !task.completed;
+            
+            taskElement.innerHTML = `
+                <div class="flex items-start justify-between">
+                    <div class="flex-1">
+                        <div class="flex items-center space-x-2 mb-2">
+                            <button onclick="toggleTaskCompletion('${task.id}')" class="flex-shrink-0">
+                                <i class="fas ${task.completed ? 'fa-check-circle text-green-600' : 'fa-circle text-gray-400'} text-lg"></i>
+                            </button>
+                            <h4 class="font-semibold text-gray-800 ${task.completed ? 'line-through text-gray-500' : ''}">${task.title}</h4>
+                        </div>
+                        ${task.description ? `<p class="text-sm text-gray-600 mb-2 ${task.completed ? 'line-through' : ''}">${task.description}</p>` : ''}
+                        <div class="flex items-center space-x-3 text-xs text-gray-500">
+                            ${task.dueDate ? `<span class="flex items-center space-x-1 ${isOverdue ? 'text-red-600 font-semibold' : ''}">
+                                <i class="fas fa-calendar"></i>
+                                <span>${new Date(task.dueDate).toLocaleDateString('pt-BR')}</span>
+                                ${isOverdue ? '<i class="fas fa-exclamation-triangle text-red-500"></i>' : ''}
+                            </span>` : ''}
+                            ${task.weekDay ? `<span class="flex items-center space-x-1">
+                                <i class="fas fa-calendar-week"></i>
+                                <span>${getWeekDayName(task.weekDay)}</span>
+                            </span>` : ''}
+                        </div>
+                    </div>
+                    <div class="flex space-x-2 ml-4">
+                        <button onclick="openTaskModal('${task.id}')" class="text-blue-600 hover:text-blue-800">
+                            <i class="fas fa-edit"></i>
+                        </button>
+                        <button onclick="deleteTask('${task.id}')" class="text-red-600 hover:text-red-800">
+                            <i class="fas fa-trash"></i>
+                        </button>
+                    </div>
+                </div>
+            `;
+            
+            // Add drag event listeners
+            taskElement.addEventListener('dragstart', handleDragStart);
+            taskElement.addEventListener('dragend', handleDragEnd);
+            
+            return taskElement;
+        }
+
+        function getWeekDayName(weekDay) {
+            const names = {
+                'monday': 'Seg',
+                'tuesday': 'Ter',
+                'wednesday': 'Qua',
+                'thursday': 'Qui',
+                'friday': 'Sex',
+                'saturday': 'Sáb',
+                'sunday': 'Dom'
+            };
+            return names[weekDay] || weekDay;
+        }
+
+        function updateHeaderCounts() {
+            const totalTasks = tasks.length;
+            const completedTasks = tasks.filter(task => task.completed).length;
+            
+            document.getElementById('taskCount').textContent = `${totalTasks} tarefa${totalTasks !== 1 ? 's' : ''}`;
+            document.getElementById('completedCount').textContent = `${completedTasks} concluída${completedTasks !== 1 ? 's' : ''}`;
+        }
+
+        function updateAnalytics() {
+            const totalTasks = tasks.length;
+            const completedTasks = tasks.filter(task => task.completed).length;
+            const completionRate = totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 0;
+            
+            // Update main analytics
+            document.getElementById('total-tasks-analytics').textContent = totalTasks;
+            document.getElementById('completed-tasks-analytics').textContent = completedTasks;
+            document.getElementById('completion-rate').textContent = completionRate + '%';
+            
+            // Update priority distribution
+            const priorityCounts = {
+                'urgent-important': 0,
+                'urgent-not-important': 0,
+                'not-urgent-important': 0,
+                'not-urgent-not-important': 0
+            };
+            
+            tasks.forEach(task => {
+                if (priorityCounts.hasOwnProperty(task.priority)) {
+                    priorityCounts[task.priority]++;
+                }
+            });
+            
+            Object.keys(priorityCounts).forEach(priority => {
+                const element = document.getElementById(priority + '-count');
+                if (element) {
+                    element.textContent = priorityCounts[priority];
+                }
+            });
+            
+            // Update weekly distribution
+            const weekDays = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'];
+            weekDays.forEach(day => {
+                const count = tasks.filter(task => task.weekDay === day).length;
+                const element = document.getElementById(day + '-count');
+                if (element) {
+                    element.textContent = count;
+                }
+            });
+        }
+
+        // Drag and drop functions
+        function setupDragAndDrop() {
+            const dropZones = document.querySelectorAll('.drop-zone');
+            
+            dropZones.forEach(zone => {
+                zone.addEventListener('dragover', handleDragOver);
+                zone.addEventListener('drop', handleDrop);
+                zone.addEventListener('dragenter', handleDragEnter);
+                zone.addEventListener('dragleave', handleDragLeave);
+            });
+        }
+
+        function handleDragStart(e) {
+            draggedTask = e.target;
+            e.target.classList.add('dragging');
+            e.dataTransfer.effectAllowed = 'move';
+            e.dataTransfer.setData('text/html', e.target.outerHTML);
+        }
+
+        function handleDragEnd(e) {
+            e.target.classList.remove('dragging');
+            draggedTask = null;
+        }
+
+        function handleDragOver(e) {
+            e.preventDefault();
+            e.dataTransfer.dropEffect = 'move';
+        }
+
+        function handleDragEnter(e) {
+            e.preventDefault();
+            e.target.closest('.drop-zone').classList.add('drag-over');
+        }
+
+        function handleDragLeave(e) {
+            const dropZone = e.target.closest('.drop-zone');
+            if (dropZone && !dropZone.contains(e.relatedTarget)) {
+                dropZone.classList.remove('drag-over');
+            }
+        }
+
+        function handleDrop(e) {
+            e.preventDefault();
+            const dropZone = e.target.closest('.drop-zone');
+            dropZone.classList.remove('drag-over');
+            
+            if (draggedTask) {
+                const taskId = draggedTask.dataset.taskId;
+                const newPriority = dropZone.dataset.priority;
+                const newWeekDay = dropZone.dataset.day;
+                
+                const updates = {};
+                if (newPriority) updates.priority = newPriority;
+                if (newWeekDay) updates.weekDay = newWeekDay;
+                
+                updateTask(taskId, updates);
+            }
+        }
+
+        // Form handling
+        document.getElementById('taskForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+            
+            const title = document.getElementById('taskTitle').value;
+            const description = document.getElementById('taskDescription').value;
+            const priority = document.getElementById('taskPriority').value;
+            const dueDate = document.getElementById('taskDueDate').value;
+            const weekDay = document.getElementById('taskWeekDay').value;
+            
+            if (currentEditingTask) {
+                updateTask(currentEditingTask, {
+                    title,
+                    description,
+                    priority,
+                    dueDate,
+                    weekDay: weekDay || null
+                });
+            } else {
+                const newTask = createTask(title, description, priority, dueDate, weekDay || null);
+                addTask(newTask);
+            }
+            
+            closeTaskModal();
+        });
+
+        // Excel functions
+        function uploadExcel() {
+            document.getElementById('fileInput').click();
+        }
+
+        function handleFileUpload(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+            
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                try {
+                    const workbook = XLSX.read(e.target.result, { type: 'binary' });
+                    const sheetName = workbook.SheetNames[0];
+                    const worksheet = workbook.Sheets[sheetName];
+                    const jsonData = XLSX.utils.sheet_to_json(worksheet);
+                    
+                    // Convert Excel data to tasks
+                    const importedTasks = jsonData.map(row => ({
+                        id: generateTaskId(),
+                        title: row['Título'] || row['Title'] || 'Tarefa sem título',
+                        description: row['Descrição'] || row['Description'] || '',
+                        priority: row['Prioridade'] || row['Priority'] || 'not-urgent-not-important',
+                        dueDate: row['Data de Vencimento'] || row['Due Date'] || '',
+                        weekDay: row['Dia da Semana'] || row['Week Day'] || null,
+                        completed: row['Concluída'] || row['Completed'] || false,
+                        createdAt: new Date().toISOString(),
+                        completedAt: null
+                    }));
+                    
+                    // Add imported tasks
+                    tasks = [...tasks, ...importedTasks];
+                    saveToLocalStorage();
+                    renderTasks();
+                    updateAnalytics();
+                    
+                    alert(`${importedTasks.length} tarefas importadas com sucesso!`);
+                } catch (error) {
+                    alert('Erro ao importar arquivo Excel. Verifique o formato do arquivo.');
+                    console.error('Error importing Excel:', error);
+                }
+            };
+            reader.readAsBinaryString(file);
+        }
+
+        function downloadExcel() {
+            const exportData = tasks.map(task => ({
+                'ID': task.id,
+                'Título': task.title,
+                'Descrição': task.description,
+                'Prioridade': task.priority,
+                'Data de Vencimento': task.dueDate,
+                'Dia da Semana': task.weekDay || '',
+                'Concluída': task.completed,
+                'Data de Criação': new Date(task.createdAt).toLocaleDateString('pt-BR'),
+                'Data de Conclusão': task.completedAt ? new Date(task.completedAt).toLocaleDateString('pt-BR') : ''
+            }));
+            
+            const worksheet = XLSX.utils.json_to_sheet(exportData);
+            const workbook = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(workbook, worksheet, 'Tarefas');
+            
+            const fileName = `tarefas_${new Date().toISOString().split('T')[0]}.xlsx`;
+            XLSX.writeFile(workbook, fileName);
+        }
+
+        // Local storage functions
+        function saveToLocalStorage() {
+            localStorage.setItem('taskmatrix_tasks', JSON.stringify(tasks));
+        }
+
+        function loadFromLocalStorage() {
+            const savedTasks = localStorage.getItem('taskmatrix_tasks');
+            if (savedTasks) {
+                tasks = JSON.parse(savedTasks);
+            }
+        }
+
+        // Keyboard shortcuts
+        document.addEventListener('keydown', function(e) {
+            // Ctrl/Cmd + N to create new task
+            if ((e.ctrlKey || e.metaKey) && e.key === 'n') {
+                e.preventDefault();
+                openTaskModal();
+            }
+            
+            // Escape to close modal
+            if (e.key === 'Escape') {
+                closeTaskModal();
+            }
+        });
+
+        // Close modal when clicking outside
+        document.getElementById('taskModal').addEventListener('click', function(e) {
+            if (e.target === this) {
+                closeTaskModal();
+            }
+        });
+
+        // Auto-save every 30 seconds
+        setInterval(saveToLocalStorage, 30000);
+
+        // Welcome message for new users
+        window.addEventListener('load', function() {
+            if (tasks.length === 0) {
+                setTimeout(() => {
+                    const welcome = confirm('Bem-vindo ao Ticket Pro! Gostaria de criar sua primeira tarefa?');
+                    if (welcome) {
+                        openTaskModal();
+                    }
+                }, 1000);
+            }
+        });
+    </script>
+    <!-- Rodapé -->
+    <footer class="bg-white border-t mt-12 py-4 text-center text-gray-500 text-sm">
+        Copyright © 2025 Jandersson Ferreira de Paula. Todos os direitos reservados. ConsultyD.
+    </footer>
+</body>
+</html>
+
