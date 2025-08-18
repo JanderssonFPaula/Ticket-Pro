@@ -60,14 +60,48 @@ O sistema funciona 100% no navegador, sem necessidade de backend. É possível *
 ---
 
 ## 📜 Licença
-Este projeto está licenciado sob a licença MIT - veja o arquivo LICENSE para mais detalhes.
+Este projeto é de código aberto e está disponível sob a licença MIT.
+
+Copyright (c) 2025 Jandersson F de Paula - @ConsultyD
+
+É concedida permissão, gratuitamente, a qualquer pessoa que obtenha uma cópia
+deste software e dos arquivos de documentação associados (o "Software"), para
+lidar no Software sem restrições, incluindo, sem limitação, os direitos de usar,
+copiar, modificar, mesclar, publicar, distribuir, sublicenciar e/ou vender cópias
+do Software, e permitir que pessoas a quem o Software é fornecido o façam,
+sujeito às seguintes condições:
+
+O aviso de copyright acima e este aviso de permissão devem ser incluídos em todas
+as cópias ou partes substanciais do Software.
+
+O SOFTWARE É FORNECIDO "NO ESTADO EM QUE SE ENCONTRA", SEM GARANTIA DE QUALQUER
+TIPO, EXPRESSA OU IMPLÍCITA, INCLUINDO, MAS NÃO SE LIMITANDO ÀS GARANTIAS DE
+COMERCIALIZAÇÃO, ADEQUAÇÃO A UM DETERMINADO FIM E NÃO VIOLAÇÃO. EM NENHUMA
+HIPÓTESE OS AUTORES OU DETENTORES DOS DIREITOS AUTORAIS SERÃO RESPONSÁVEIS POR
+QUALQUER RECLAMAÇÃO, DANOS OU OUTRAS RESPONSABILIDADES, SEJA EM AÇÃO DE CONTRATO,
+ATO ILÍCITO OU OUTRO, DECORRENTE DE, OU EM CONEXÃO COM O SOFTWARE OU O USO OU
+OUTRAS NEGOCIAÇÕES NO SOFTWARE.
 
 
 
 ## 📝 Autor
-Este código foi desenvolvido por:
 
-**💼 ConsultyD**
-- **👤 Jandersson Ferreira de Paula**  
-- **📧 Email:** contato@consultyd.com.br
-- **🔗 GitHub:**[Clique Aqui](https://github.com/JanderssonFPaula)
+Este código foi desenvolvido por:  
+- 👤 **Jandersson F. de Paula**  
+- 🔗 **GitHub:** [Clique Aqui](https://github.com/JanderssonFPaula)
+
+---
+
+## 💼 ConsultyD  
+
+Para dúvidas, sugestões ou problemas:  
+- Abra uma *issue* no repositório  
+- Entre em contato através do email ou redes sociais  
+
+- 📧 **Email:** contato@consultyd.com.br  
+- 📸 **Instagram:** [Clique Aqui](https://www.instagram.com/consultyd/)  
+
+
+---
+
+**Desenvolvido com ❤️ para facilitar o gerenciamento de projetos**
